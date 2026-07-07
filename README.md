@@ -127,3 +127,35 @@ Specifically:
 - You can restructure the starter code however you see fit
 - AI tools are fine to use, but your DECISIONS.md and video demo should reflect your own understanding
 - If something in the spec seems wrong or ambiguous, make a call and document it in DECISIONS.md
+
+---
+
+## Implementation notes
+
+**Stack:** Expo Router + React Native, TanStack Query (data/caching/pagination), react-native-reanimated (UI-thread animations), react-native-svg (rings/charts), expo-haptics. Backend is Express + better-sqlite3.
+
+**What's built:** all core screens (Dashboard, History, Session Detail) + all four requested endpoints, plus bonuses **B1 Focus Timer**, **B2 Achievements**, **B4 API tests**, and **B5 animations/polish**. B3 (n8n) is intentionally not implemented. Reasoning for every non-obvious choice is in `DECISIONS.md`.
+
+**Layout:**
+```
+app/            screens (tabs, session/[id], timer)
+components/     ui/ (Screen, Card, Button, Text, ProgressRing, Skeleton, StateView, AnimatedPressable)
+               + dashboard/ history/ achievements/ session/ timer/
+lib/           api/ (client, queries, provider), format, haptics
+constants/     Colors, typography, sessionMeta
+server/src/    app + routes/ + lib/ (errors, cursor, serialize, data, stats, time, validate)
+server/tests/  vitest: cursor + pagination + date-format contract
+```
+
+**Run it**
+```bash
+# Backend
+cd server && npm install && npm run seed && npm run dev   # http://localhost:3000
+npm test                                                  # API tests
+
+# App (separate terminal, from repo root)
+npm install && npx expo start
+```
+The app auto-detects the API host from the Expo dev server; override with `EXPO_PUBLIC_API_URL` if needed.
+
+> Env note: on Node 24+ the starter's `better-sqlite3@11` won't compile — this repo bumps it to `^12`, which ships prebuilt binaries.
