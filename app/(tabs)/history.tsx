@@ -1,52 +1,83 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/Colors';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { Colors, Spacing } from '@/constants/Colors';
+import { Screen } from '@/components/ui/Screen';
+import { StateView } from '@/components/ui/StateView';
+import { Text } from '@/components/ui/Text';
+import { FilterPills } from '@/components/history/FilterPills';
+import { HistorySkeleton } from '@/components/history/HistorySkeleton';
+import { SESSION_CARD_HEIGHT, SessionCard } from '@/components/history/SessionCard';
+import { HistoryFilter, useSessionsInfinite } from '@/lib/api/queries';
+import type { Session } from '@/types/api';
 
 export default function HistoryScreen() {
+  const [filter, setFilter] = useState<HistoryFilter>('week');
+  const query = useSessionsInfinite(filter);
+  const sessions = query.data?.pages.flatMap((page) => page.data) ?? [];
+
+  const openSession = useCallback((id: string) => router.push(`/session/${id}`), []);
+  const renderItem = useCallback(
+    ({ item }: { item: Session }) => <SessionCard session={item} onPress={openSession} />,
+    [openSession]
+  );
+
+  const footer = query.isFetchingNextPage ? (
+    <ActivityIndicator color={Colors.primary} style={styles.footer} />
+  ) : sessions.length && !query.hasNextPage ? (
+    <Text variant="caption" style={styles.end}>
+      You&apos;ve reached the end
+    </Text>
+  ) : null;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.placeholder}>
-        <Text style={styles.title}>History</Text>
-        <Text style={styles.subtitle}>Build this screen from the design spec.</Text>
-        <Text style={styles.hint}>
-          See the "Session History" section in the design reference.{'\n'}
-          This screen is PARTIALLY SPECCED - happy path is designed,{'\n'}
-          edge cases (empty, loading, error) are your call.
+    <Screen>
+      <View style={styles.header}>
+        <Text variant="h2" style={styles.title}>
+          History
         </Text>
       </View>
-    </SafeAreaView>
+      <FilterPills value={filter} onChange={setFilter} />
+
+      {query.isLoading ? (
+        <HistorySkeleton />
+      ) : query.isError ? (
+        <StateView
+          icon="cloud-offline-outline"
+          title="Couldn't load sessions"
+          subtitle="Something went wrong reaching the server. Pull to retry."
+          actionLabel="Retry"
+          onAction={() => query.refetch()}
+        />
+      ) : sessions.length === 0 ? (
+        <StateView
+          icon="moon-outline"
+          title="No sessions here yet"
+          subtitle="Start a focus session and it'll show up in your history."
+        />
+      ) : (
+        <FlatList
+          data={sessions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          getItemLayout={(_, index) => ({ length: SESSION_CARD_HEIGHT, offset: SESSION_CARD_HEIGHT * index, index })}
+          onEndReachedThreshold={0.4}
+          onEndReached={() => query.hasNextPage && !query.isFetchingNextPage && query.fetchNextPage()}
+          ListFooterComponent={footer}
+          refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />}
+          removeClippedSubviews
+        />
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  title: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 24,
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 16,
-    color: Colors.textSecondary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  hint: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  header: { paddingHorizontal: Spacing.xl },
+  title: { marginTop: Spacing.xs, marginBottom: Spacing.sm },
+  list: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.sm, paddingBottom: Spacing.xxl },
+  footer: { marginVertical: Spacing.lg },
+  end: { textAlign: 'center', marginVertical: Spacing.lg },
 });
