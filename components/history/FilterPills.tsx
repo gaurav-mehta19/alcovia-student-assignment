@@ -47,8 +47,14 @@ export function FilterPills({ value, onChange }: Props) {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   row: { gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
-  pill: { paddingVertical: 7, paddingHorizontal: Spacing.lg, borderRadius: Radii.pill },
+  pill: {
+    minHeight: 38,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pillActive: { backgroundColor: Colors.primary },
   pillIdle: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  label: { fontSize: 13 },
+  label: { fontSize: 13, lineHeight: 20, textAlignVertical: 'center', includeFontPadding: false },
 });
