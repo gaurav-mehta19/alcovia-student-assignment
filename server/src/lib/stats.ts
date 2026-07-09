@@ -1,28 +1,21 @@
-import { getSessionsSince } from './data';
+import { countCompletedSince, getWeekdayCounts } from './data';
 import { StudentRow } from './serialize';
 import { startOfToday, startOfWeek } from './time';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DOW: Record<(typeof DAYS)[number], number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
 
 export function buildWeeklyStats(student: StudentRow, now = new Date()) {
   const weekStart = startOfWeek(now);
-  const todayStart = startOfToday(now);
-  const sessions = getSessionsSince(student.id, weekStart).filter((s) => s.status === 'completed');
-
-  const counts = new Array(7).fill(0);
-  let todayCompleted = 0;
-  for (const s of sessions) {
-    const index = (new Date(s.started_at).getDay() + 6) % 7;
-    counts[index] += 1;
-    if (s.started_at >= todayStart) todayCompleted += 1;
-  }
+  const counts = new Map(getWeekdayCounts(student.id, weekStart).map((r) => [r.dow, r.n]));
+  const sessionsPerDay = DAYS.map((day) => ({ day, count: counts.get(DOW[day]) ?? 0 }));
 
   return {
-    totalSessions: sessions.length,
+    totalSessions: sessionsPerDay.reduce((sum, d) => sum + d.count, 0),
     totalCoins: student.total_coins,
     streak: student.current_streak,
-    todayCompleted,
+    todayCompleted: countCompletedSince(student.id, startOfToday(now)),
     dailyGoal: student.daily_goal,
-    sessionsPerDay: DAYS.map((day, i) => ({ day, count: counts[i] })),
+    sessionsPerDay,
   };
 }

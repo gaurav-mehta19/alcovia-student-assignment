@@ -48,10 +48,23 @@ export function getAchievements(studentId: string): AchievementRow[] {
     .all(studentId) as AchievementRow[];
 }
 
-export function getSessionsSince(studentId: string, since: number): SessionRow[] {
+export function getWeekdayCounts(studentId: string, since: number): { dow: number; n: number }[] {
   return getDb()
-    .prepare('SELECT * FROM sessions WHERE student_id = ? AND started_at >= ? ORDER BY started_at DESC')
-    .all(studentId, since) as SessionRow[];
+    .prepare(
+      `SELECT CAST(strftime('%w', started_at / 1000, 'unixepoch', 'localtime') AS INTEGER) AS dow,
+              COUNT(*) AS n
+       FROM sessions
+       WHERE student_id = ? AND status = 'completed' AND started_at >= ?
+       GROUP BY dow`
+    )
+    .all(studentId, since) as { dow: number; n: number }[];
+}
+
+export function countCompletedSince(studentId: string, since: number): number {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) AS n FROM sessions WHERE student_id = ? AND status = 'completed' AND started_at >= ?")
+    .get(studentId, since) as { n: number };
+  return row.n;
 }
 
 export interface NewSession {
