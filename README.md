@@ -132,16 +132,17 @@ Specifically:
 
 ## Implementation notes
 
-**Stack:** Expo Router + React Native, TanStack Query (data/caching/pagination), react-native-reanimated (UI-thread animations), react-native-svg (rings/charts), expo-haptics. Backend is Express + better-sqlite3.
+**Stack:** Expo SDK 54 (Expo Router + React Native 0.81, React 19), TanStack Query (data/caching/pagination), react-native-reanimated 4 (UI-thread animations), react-native-svg (rings/charts), expo-haptics. Runs on iOS, Android, and web. Backend is Express + better-sqlite3.
 
-**What's built:** all core screens (Dashboard, History, Session Detail) + all four requested endpoints, plus bonuses **B1 Focus Timer**, **B2 Achievements**, **B4 API tests**, and **B5 animations/polish**. B3 (n8n) is intentionally not implemented. Reasoning for every non-obvious choice is in `DECISIONS.md`.
+**What's built:** all core screens (Dashboard, History, Session Detail) + all six endpoints, plus bonuses **B1 Focus Timer**, **B2 Achievements**, **B4 tests**, and **B5 animations/polish**. B3 (n8n) is intentionally not implemented. Also: a top-level error boundary, accessibility labels on interactive controls, and a server that auto-seeds when the DB is empty. Reasoning for every non-obvious choice is in `DECISIONS.md`.
 
 **Layout:**
 ```
-app/            screens (tabs, session/[id], timer)
-components/     ui/ (Screen, Card, Button, Text, ProgressRing, Skeleton, StateView, AnimatedPressable)
+app/            screens (tabs, session/[id], timer) + error boundary in _layout
+components/     ui/ (Screen, Card, Button, Text, ProgressRing, Skeleton, StateView,
+                     AnimatedPressable, ErrorBoundary)
                + dashboard/ history/ achievements/ session/ timer/
-lib/           api/ (client, queries, provider), format, haptics
+lib/           api/ (client, queries, provider), format, haptics  (+ format.test.ts)
 constants/     Colors, typography, sessionMeta
 server/src/    app + routes/ + lib/ (errors, cursor, serialize, data, stats, time, validate)
 server/tests/  vitest: cursor + pagination + date-format contract
@@ -151,11 +152,14 @@ server/tests/  vitest: cursor + pagination + date-format contract
 ```bash
 # Backend
 cd server && npm install && npm run seed && npm run dev   # http://localhost:3000
-npm test                                                  # API tests
+npm test                                                  # API tests (vitest)
 
 # App (separate terminal, from repo root)
-npm install && npx expo start
+npm install
+npx expo start          # then press i / a for iOS / Android, or w for web
+npx expo start --web    # web directly
+npm test                # app unit tests (jest — format/date layer)
 ```
-The app auto-detects the API host from the Expo dev server; override with `EXPO_PUBLIC_API_URL` if needed.
+The app auto-detects the API host from the Expo dev server; override with `EXPO_PUBLIC_API_URL` if needed. The server also auto-seeds on first run if the DB is empty, so `npm run seed` is optional (it's still the way to reset).
 
 > Env note: on Node 24+ the starter's `better-sqlite3@11` won't compile — this repo bumps it to `^12`, which ships prebuilt binaries.

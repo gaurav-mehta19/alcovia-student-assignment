@@ -30,6 +30,10 @@ The client uses `useInfiniteQuery`; `getNextPageParam` returns the response `cur
 - **API down / unreachable:** `apiFetch` normalizes network failures into a typed `ApiError` (`NETWORK`). Each screen renders a `StateView` with a friendly message and a **Retry** button that re-runs the query. React Query also retries transient failures twice with backoff before surfacing the error.
 - **Request takes 10 seconds:** `apiFetch` uses an `AbortController` with a 10s timeout, so a hung request fails deterministically as a `TIMEOUT` error and shows the retry state instead of hanging. While in-flight, screens show **skeletons** (not spinners) so the layout is stable.
 - **0 sessions:** History shows a dedicated empty `StateView` ("No sessions here yet") that's distinct from the error state — an empty filter result is not a failure. The Dashboard progress ring and week chart both handle zero gracefully (no division by zero; a minimum bar sliver keeps the chart readable).
+- **A render-time crash:** a top-level `ErrorBoundary` (wrapping the whole app in `app/_layout.tsx`) catches component errors and shows the same `StateView` with a "Try again" reset, so a bug degrades to a recoverable screen instead of a white flash.
+- **Fresh clone / empty DB:** the server auto-seeds when the `students` table is empty, so `npm run dev` without a prior `npm run seed` still returns data instead of 404s.
+
+Interactive controls (filter pills, back/close buttons, session and achievement cards) carry `accessibilityRole`/`accessibilityLabel` so the app is usable with a screen reader, not just by sighted users.
 
 ## Session Detail
 
@@ -39,15 +43,17 @@ I deliberately left off raw IDs, the student ID, and millisecond precision — t
 
 ## What's Weak
 
-The **weekly stats aggregation** is the weakest part. `buildWeeklyStats` pulls the week's rows and buckets them in JS on every request. It's fine for one student and a handful of sessions, but it recomputes from scratch each call and uses the server's local timezone for day bucketing, so a student in a different timezone could see a session land on the "wrong" day near midnight. With two more days I'd (1) push the day bucketing into a single indexed SQL `GROUP BY`, and (2) make the period window timezone-aware (accept the client's UTC offset).
+The weakest remaining part is **timezone handling in the weekly stats**. `buildWeeklyStats` now buckets by day with an indexed SQL `GROUP BY` (`strftime('%w', …)`), but it uses the *server's* local timezone, so a student in a different timezone could see a session land on the "wrong" day near midnight. With more time I'd make the period window timezone-aware by accepting the client's UTC offset and passing it into the query.
 
-Second: I don't have automated tests on the React Native components — I verified the app via typecheck + a full production bundle + manual flows, but there's no RTL/jest coverage of, say, the empty/error branches. That'd be the next test target after the API.
+Second: my automated coverage is unit-level — vitest on the API (pagination, cursor, date-format contract) and jest on the client date/format layer — but I don't have full React Native component (RTL) tests exercising, say, the History empty/error render branches. I verified those via typecheck + a production bundle + manual flows; component render tests would be the next target.
+
+Third, smaller: coins are computed from a fixed per-type map on the server rather than from actual duration, and the app is single-student (`stu_01` hardcoded) — both fine for the assignment's scope but not how a real product would model it.
 
 ## What Breaks at Scale
 
 With 10,000 concurrent users, the first thing to break is **`better-sqlite3` being synchronous and single-writer**. Every query blocks the Node event loop; under load, request latency climbs and the single POST writer serializes all session creation. Reads are fine (WAL, indexed), writes are the bottleneck.
 
-What I'd change, in order: (1) move to Postgres so writes aren't globally serialized and I get real connection pooling; (2) the per-request stats recomputation becomes the next hot spot — I'd cache weekly stats per student (short TTL) or maintain a rollup table updated on write; (3) add pagination `limit` ceilings (already capped at 50) and rate-limiting on the write endpoint; (4) the keyset cursor design already scales — it doesn't degrade on deep pages the way `OFFSET` does, so pagination itself is not a scaling concern.
+What I'd change, in order: (1) move to Postgres so writes aren't globally serialized and I get real connection pooling; (2) the weekly stats query — while now a single indexed `GROUP BY` rather than JS bucketing — is still recomputed uncached per request, so it becomes the next hot spot; I'd cache it per student (short TTL) or maintain a rollup table updated on write; (3) add pagination `limit` ceilings (already capped at 50) and rate-limiting on the write endpoint; (4) the keyset cursor design already scales — it doesn't degrade on deep pages the way `OFFSET` does, so pagination itself is not a scaling concern.
 
 A note on the **seed data**: the fixtures' epoch timestamps were dated ~2 years in the past while the ISO timeline fields were current, which would make the Dashboard show an empty week and `0/3` today on first run. I treated the stale epochs as unintended and **rebase the demo data to "now" at seed time** (preserving the relative day spacing), so the app is populated whenever it's seeded. This also reproduces the design's "2/3 today" state exactly.
 
@@ -64,6 +70,14 @@ For **locked vs unlocked**, I avoided a hard grayscale wall because every achiev
 No spec, so I designed the smallest thing that closes the loop: **pick a type → run a countdown → bank the session.** Setup is a radio-style type picker (each type maps to a duration). Running shows a large sweeping progress ring (Reanimated, UI-thread, linear 1s sweep so it glides rather than steps) with Pause/Resume and two escape hatches: **Give up** (discards, warning haptic, no POST) and **Finish** (banks the elapsed time now). On natural completion or Finish, it POSTs to `POST /students/:id/sessions`, fires a success haptic, and shows a celebration screen with the coins earned; `invalidateQueries` then refreshes the Dashboard and History underneath. If the POST fails, the completion screen shows an error with a **Try again** button rather than losing the session silently.
 
 I intentionally left out background/lock-screen timing, notifications, custom durations, and persistence across app kill — all reasonable v2 features, but none are needed to demonstrate the create-session flow, and each adds real platform complexity (background tasks, notification permissions) disproportionate to a timer demo.
+
+## (Bonus) Tests
+
+Two layers. **Server (vitest, 13 tests):** the two things the challenge names — cursor encode/decode (round-trip, url-safety, malformed → error) and pagination behaviour (`hasMore` across pages, `null` cursor on the last page, limit clamping) — plus the **date-format contract** asserted end-to-end via supertest (list returns epoch-ms *numbers*, detail returns ISO *strings*), the 404 error shape, and POST validation. Tests run against an isolated temp DB (`DB_PATH` override) so they don't touch the dev data. **App (jest, 8 tests):** the client date/format layer (`parseApiDate` accepting both formats, `formatDuration`, `formatClock`, `formatRelative`'s Today/Yesterday/weekday logic), which is the piece most likely to break silently across the two API date formats.
+
+## (Bonus) Animations & Polish
+
+Everything animated runs on the **UI thread via Reanimated**, so it stays at 60fps even while JS is busy fetching: staggered `FadeInDown` section entrances, the progress rings drawing via `useAnimatedProps` on the SVG stroke, the week-chart bars growing on mount, press-scale on every pressable, and the timer's countdown ring sweeping linearly (1s) rather than stepping. Loading states are **skeletons, not spinners**, so layout doesn't jump when data arrives. **Haptics** punctuate meaningful moments — selection on tab/filter/type changes, medium impact on primary actions, success on session completion, warning on give-up. The intent is that the app *feels* native, not just looks it.
 
 ## (Bonus) n8n Workflow
 
