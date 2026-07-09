@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Colors, Radii, Spacing } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Text } from '@/components/ui/Text';
@@ -18,12 +18,7 @@ interface Props {
 
 export function FilterPills({ value, onChange }: Props) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-      style={styles.scroll}
-    >
+    <View style={styles.row}>
       {OPTIONS.map((option) => {
         const active = option.value === value;
         return (
@@ -40,15 +35,20 @@ export function FilterPills({ value, onChange }: Props) {
           </AnimatedPressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 0 },
-  row: { gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+  },
   pill: {
-    minHeight: 38,
+    height: 38,
     paddingHorizontal: Spacing.lg,
     borderRadius: Radii.pill,
     alignItems: 'center',
@@ -56,5 +56,5 @@ const styles = StyleSheet.create({
   },
   pillActive: { backgroundColor: Colors.primary },
   pillIdle: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  label: { fontSize: 13, lineHeight: 20, textAlignVertical: 'center', includeFontPadding: false },
+  label: { fontSize: 13 },
 });
