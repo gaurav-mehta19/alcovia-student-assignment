@@ -13,7 +13,14 @@ export const SESSION_CARD_HEIGHT = 78;
 function SessionCardBase({ session, onPress }: { session: Session; onPress: (id: string) => void }) {
   const meta = sessionMeta(session.type);
   return (
-    <AnimatedPressable haptic="tap" scaleTo={0.98} onPress={() => onPress(session.id)} style={styles.card}>
+    <AnimatedPressable
+      haptic="tap"
+      scaleTo={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={`${meta.label}, ${formatDuration(session.durationMs)}, ${formatRelative(session.startedAt)}`}
+      onPress={() => onPress(session.id)}
+      style={styles.card}
+    >
       <View style={[styles.icon, { backgroundColor: meta.tint }]}>
         <Ionicons name={meta.icon} size={18} color={meta.accent} />
       </View>

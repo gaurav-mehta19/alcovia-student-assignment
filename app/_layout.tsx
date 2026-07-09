@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { QueryProvider } from '@/lib/api/provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,14 +33,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <QueryProvider>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F5F6FA' } }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="session/[id]" options={{ presentation: 'card' }} />
-          <Stack.Screen name="timer" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        </Stack>
-      </QueryProvider>
+      <ErrorBoundary>
+        <QueryProvider>
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F5F6FA' } }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="session/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="timer" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          </Stack>
+        </QueryProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

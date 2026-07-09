@@ -30,7 +30,14 @@ export default function SessionDetailScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <AnimatedPressable haptic="tap" scaleTo={0.9} onPress={() => router.back()} style={styles.back}>
+        <AnimatedPressable
+          haptic="tap"
+          scaleTo={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => router.back()}
+          style={styles.back}
+        >
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </AnimatedPressable>
         <Text variant="h3">Session</Text>

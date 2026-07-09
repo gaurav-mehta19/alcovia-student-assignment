@@ -26,6 +26,9 @@ export function FilterPills({ value, onChange }: Props) {
             key={option.value}
             haptic="select"
             scaleTo={0.94}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`Filter by ${option.label}`}
             onPress={() => onChange(option.value)}
             style={{ ...styles.pill, ...(active ? styles.pillActive : styles.pillIdle) }}
           >

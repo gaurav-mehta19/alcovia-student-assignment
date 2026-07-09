@@ -1,5 +1,5 @@
 export function parseApiDate(value: number | string): Date {
-  return typeof value === 'number' ? new Date(value) : new Date(value);
+  return new Date(value);
 }
 
 export function formatDuration(ms: number): string {

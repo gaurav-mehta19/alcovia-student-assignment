@@ -26,6 +26,11 @@ export default function TimerScreen() {
   const total = SESSION_MINUTES[type] * 60;
   const meta = SESSION_META[type];
   const finished = useRef(false);
+  const payload = useRef<{
+    type: SessionType;
+    durationMs: number;
+    timeline: { type: 'focus' | 'break'; durationMs: number; startedAt: string }[];
+  } | null>(null);
 
   useEffect(() => {
     if (phase !== 'active' || !running) return;
@@ -41,11 +46,12 @@ export default function TimerScreen() {
       setPhase('done');
       haptics.success();
       const durationMs = Math.max(1, Math.round(elapsedSeconds)) * 1000;
-      create.mutate({
+      payload.current = {
         type,
         durationMs,
         timeline: [{ type: 'focus', durationMs, startedAt: new Date(Date.now() - durationMs).toISOString() }],
-      });
+      };
+      create.mutate(payload.current);
     },
     [create, type]
   );
@@ -72,12 +78,12 @@ export default function TimerScreen() {
       <Screen edges={['top', 'bottom']}>
         <TimerComplete
           label={meta.label}
-          durationMs={(total - Math.max(0, secondsLeft)) * 1000 || total * 1000}
+          durationMs={payload.current?.durationMs ?? total * 1000}
           coins={create.data?.coins}
           pending={create.isPending}
           error={create.isError}
           onDone={() => router.back()}
-          onRetry={() => create.mutate({ type, durationMs: total * 1000, timeline: [] })}
+          onRetry={() => payload.current && create.mutate(payload.current)}
         />
       </Screen>
     );
@@ -86,7 +92,14 @@ export default function TimerScreen() {
   return (
     <Screen edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <AnimatedPressable haptic="tap" scaleTo={0.9} onPress={() => router.back()} style={styles.close}>
+        <AnimatedPressable
+          haptic="tap"
+          scaleTo={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Close timer"
+          onPress={() => router.back()}
+          style={styles.close}
+        >
           <Ionicons name="close" size={24} color={Colors.text} />
         </AnimatedPressable>
         <Text variant="h3">Focus Timer</Text>

@@ -17,7 +17,14 @@ function AchievementCardBase({ achievement, index, onPress }: Props) {
   const unlocked = achievement.unlockedAt !== null;
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()} style={styles.col}>
-      <AnimatedPressable haptic="tap" scaleTo={0.96} onPress={() => onPress(achievement)} style={styles.card}>
+      <AnimatedPressable
+        haptic="tap"
+        scaleTo={0.96}
+        accessibilityRole="button"
+        accessibilityLabel={`${achievement.name}, ${unlocked ? 'unlocked' : `${achievement.current} of ${achievement.target}`}`}
+        onPress={() => onPress(achievement)}
+        style={styles.card}
+      >
         <View style={[styles.badge, { backgroundColor: unlocked ? Colors.amberLight : Colors.background }]}>
           <Ionicons
             name={(achievement.icon as keyof typeof Ionicons.glyphMap) ?? 'star'}
