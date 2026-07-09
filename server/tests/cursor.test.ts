@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from '@jest/globals';
 import { decodeCursor, encodeCursor } from '../src/lib/cursor';
 import { AppError } from '../src/lib/errors';
 

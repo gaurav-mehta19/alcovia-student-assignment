@@ -145,14 +145,14 @@ components/     ui/ (Screen, Card, Button, Text, ProgressRing, Skeleton, StateVi
 lib/           api/ (client, queries, provider), format, haptics  (+ format.test.ts)
 constants/     Colors, typography, sessionMeta
 server/src/    app + routes/ + lib/ (errors, cursor, serialize, data, stats, time, validate)
-server/tests/  vitest: cursor + pagination + date-format contract
+server/tests/  jest: cursor + pagination + date-format contract
 ```
 
 **Run it**
 ```bash
 # Backend
 cd server && npm install && npm run seed && npm run dev   # http://localhost:3000
-npm test                                                  # API tests (vitest)
+npm test                                                  # API tests (jest)
 
 # App (separate terminal, from repo root)
 npm install

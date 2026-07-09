@@ -45,7 +45,7 @@ I deliberately left off raw IDs, the student ID, and millisecond precision — t
 
 The weakest remaining part is **timezone handling in the weekly stats**. `buildWeeklyStats` now buckets by day with an indexed SQL `GROUP BY` (`strftime('%w', …)`), but it uses the *server's* local timezone, so a student in a different timezone could see a session land on the "wrong" day near midnight. With more time I'd make the period window timezone-aware by accepting the client's UTC offset and passing it into the query.
 
-Second: my automated coverage is unit-level — vitest on the API (pagination, cursor, date-format contract) and jest on the client date/format layer — but I don't have full React Native component (RTL) tests exercising, say, the History empty/error render branches. I verified those via typecheck + a production bundle + manual flows; component render tests would be the next target.
+Second: my automated coverage is unit-level — jest on the API (pagination, cursor, date-format contract) and on the client date/format layer — but I don't have full React Native component (RTL) tests exercising, say, the History empty/error render branches. I verified those via typecheck + a production bundle + manual flows; component render tests would be the next target.
 
 Third, smaller: coins are computed from a fixed per-type map on the server rather than from actual duration, and the app is single-student (`stu_01` hardcoded) — both fine for the assignment's scope but not how a real product would model it.
 
@@ -73,7 +73,7 @@ I intentionally left out background/lock-screen timing, notifications, custom du
 
 ## (Bonus) Tests
 
-Two layers. **Server (vitest, 13 tests):** the two things the challenge names — cursor encode/decode (round-trip, url-safety, malformed → error) and pagination behaviour (`hasMore` across pages, `null` cursor on the last page, limit clamping) — plus the **date-format contract** asserted end-to-end via supertest (list returns epoch-ms *numbers*, detail returns ISO *strings*), the 404 error shape, and POST validation. Tests run against an isolated temp DB (`DB_PATH` override) so they don't touch the dev data. **App (jest, 8 tests):** the client date/format layer (`parseApiDate` accepting both formats, `formatDuration`, `formatClock`, `formatRelative`'s Today/Yesterday/weekday logic), which is the piece most likely to break silently across the two API date formats.
+One runner (**jest**) across both packages — `ts-jest` for the Node server, `jest-expo` for the app. **Server (13 tests):** the two things the challenge names — cursor encode/decode (round-trip, url-safety, malformed → error) and pagination behaviour (`hasMore` across pages, `null` cursor on the last page, limit clamping) — plus the **date-format contract** asserted end-to-end via supertest (list returns epoch-ms *numbers*, detail returns ISO *strings*), the 404 error shape, and POST validation. Tests run against an isolated temp DB (`DB_PATH` override) so they don't touch the dev data. **App (jest, 8 tests):** the client date/format layer (`parseApiDate` accepting both formats, `formatDuration`, `formatClock`, `formatRelative`'s Today/Yesterday/weekday logic), which is the piece most likely to break silently across the two API date formats.
 
 ## (Bonus) Animations & Polish
 

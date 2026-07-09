@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import request from 'supertest';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from '@jest/globals';
 import { createApp } from '../src/app';
 import { seed } from '../src/seed';
 
